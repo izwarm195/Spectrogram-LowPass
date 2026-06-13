@@ -8,10 +8,11 @@ SpectrogramAndLowPassAudioProcessorEditor::SpectrogramAndLowPassAudioProcessorEd
     , waterfall(p.getAnalyzer(), p.getSampleRatePtr())
 {
     addAndMakeVisible(waterfall);
-    waterfall.startAnimation();
-
-    setSize(740, 520);
+    // waterfall.startAnimation();  ← 删掉，timer 已在构造函数启动
+    setResizable(true, true);
+    setSize(800, 400);
 }
+
 
 SpectrogramAndLowPassAudioProcessorEditor::~SpectrogramAndLowPassAudioProcessorEditor()
 {
