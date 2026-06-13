@@ -703,6 +703,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Source\SpectrumWaterfall.cpp">
+      <Filter>Spectrogram&amp;LowPass\Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\SpectrumAnalyzer.cpp">
+      <Filter>Spectrogram&amp;LowPass\Source</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\PluginProcessor.cpp">
       <Filter>Spectrogram&amp;LowPass\Source</Filter>
     </ClCompile>
@@ -3777,6 +3783,12 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Source\SpectrumWaterfall.h">
+      <Filter>Spectrogram&amp;LowPass\Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\SpectrumAnalyzer.h">
+      <Filter>Spectrogram&amp;LowPass\Source</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\PluginProcessor.h">
       <Filter>Spectrogram&amp;LowPass\Source</Filter>
     </ClInclude>

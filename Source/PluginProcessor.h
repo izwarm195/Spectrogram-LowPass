@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "SpectrumAnalyzer.h"
 
 class SpectrogramAndLowPassAudioProcessor : public juce::AudioProcessor
 {
@@ -31,31 +32,25 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
-    float getFFTMagnitude(int index) const;
-    int   getFFTSize() const;
-    float getMaxMagnitude() const;
-    float getSampleRate() const;
+    // 公开接口
+    SpectrumAnalyzer& getAnalyzer() { return analyzer; }
+    float             getSampleRate() const { return static_cast<float>(currentSampleRate); }
+    float* getSampleRatePtr() { return &currentSampleRate; }
 
     juce::AudioProcessorValueTreeState& getState() { return parameters; }
 
 private:
-    // 注意：parameters 在初始化列表中构造（见 .cpp）
     juce::AudioProcessorValueTreeState parameters;
+    std::atomic<float>* cutoffParam = nullptr;
 
+    // 滤波器
     using Filter = juce::dsp::IIR::Filter<float>;
     juce::dsp::ProcessorDuplicator<Filter, juce::dsp::IIR::Coefficients<float>> lowPassFilter;
 
-    juce::dsp::FFT fft;
-    juce::dsp::WindowingFunction<float> window;
+    // 频谱分析器（独立的引擎）
+    SpectrumAnalyzer analyzer;
 
-    static constexpr int fftOrder = 10;
-    static constexpr int fftSize = 1 << fftOrder;
-
-    std::atomic<float> fftMagnitudes[fftSize];
-    std::atomic<float> maxMagnitude{ 0.0f };
-
-    std::atomic<float>* cutoffParam = nullptr;
-    double currentSampleRate = 44100.0;
+    float currentSampleRate = 44100.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpectrogramAndLowPassAudioProcessor)
 };

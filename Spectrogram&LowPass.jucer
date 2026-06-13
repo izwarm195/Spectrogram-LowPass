@@ -4,6 +4,14 @@
               useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="Ej5kNi" name="Spectrogram&amp;LowPass">
     <GROUP id="{17049646-5BB6-28C7-99E4-A6174964CE1D}" name="Source">
+      <FILE id="TDcCG3" name="SpectrumWaterfall.cpp" compile="1" resource="0"
+            file="Source/SpectrumWaterfall.cpp"/>
+      <FILE id="tQE9Rs" name="SpectrumWaterfall.h" compile="0" resource="0"
+            file="Source/SpectrumWaterfall.h"/>
+      <FILE id="axXE4i" name="SpectrumAnalyzer.cpp" compile="1" resource="0"
+            file="Source/SpectrumAnalyzer.cpp"/>
+      <FILE id="D6CLR8" name="SpectrumAnalyzer.h" compile="0" resource="0"
+            file="Source/SpectrumAnalyzer.h"/>
       <FILE id="mAONaX" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="WH5How" name="PluginProcessor.h" compile="0" resource="0"
