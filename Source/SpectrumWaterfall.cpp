@@ -5,11 +5,8 @@ SpectrumWaterfall::SpectrumWaterfall(SpectrumAnalyzer& an, float* srPtr)
     : analyzer(an)
     , currentSampleRate(srPtr)
 {
-    for (auto& frame : spectrumHistory)
-        for (auto& v : frame)
-            v = 0.0f;
-
     for (auto& x : logXCoords) x = 0.0f;
+    waterfallImage = juce::Image(juce::Image::RGB, 1, 1, false);
 }
 
 SpectrumWaterfall::~SpectrumWaterfall()
@@ -19,7 +16,8 @@ SpectrumWaterfall::~SpectrumWaterfall()
 
 void SpectrumWaterfall::startAnimation()
 {
-    startTimerHz(60);
+    // 30fps 足够流畅；注释掉另一行换成 60 也可以，但 30 画质/性能平衡更好
+    startTimerHz(30);
 }
 
 void SpectrumWaterfall::stopAnimation()
@@ -27,10 +25,27 @@ void SpectrumWaterfall::stopAnimation()
     stopTimer();
 }
 
-// ===== 预计算对数 X 坐标（cent 差值正比于频距，只 resize 时重建） =====
+void SpectrumWaterfall::resized()
+{
+    ensureImageSize(getWidth(), getHeight());
+}
+
+void SpectrumWaterfall::ensureImageSize(int w, int h)
+{
+    if (waterfallImage.getWidth() != w ||
+        waterfallImage.getHeight() != h)
+    {
+        waterfallImage = juce::Image(juce::Image::RGB, juce::jmax(1, w),
+            juce::jmax(1, h), false);
+        juce::Graphics ig(waterfallImage);
+        ig.fillAll(juce::Colour(0xff070710));
+        currentRow = 0;
+    }
+}
+
+// ===== 对数 X 坐标 =====
 void SpectrumWaterfall::rebuildXCoords(float width, float sr)
 {
-    // FIX: constexpr → const，MSVC 的 std::log2 不是 constexpr
     static const float minFreq = 20.0f;
     static const float maxFreq = 20000.0f;
     static const float A4 = 440.0f;
@@ -48,7 +63,6 @@ void SpectrumWaterfall::rebuildXCoords(float width, float sr)
         const float clamped = juce::jlimit(minFreq, maxFreq, freq);
         const float cent = 1200.0f * std::log2(clamped / A4);
         const float t = (cent - centMin) / (centMax - centMin);
-
         logXCoords[static_cast<size_t>(i)] = juce::jlimit(0.0f, 1.0f, t) * width;
     }
 
@@ -56,70 +70,74 @@ void SpectrumWaterfall::rebuildXCoords(float width, float sr)
     lastSampleRate = sr;
 }
 
-// ===== 60Hz 回调：快照一帧到环形缓冲 =====
+// ===== 30Hz 回调：Image 上移一行，底部画新频谱 =====
 void SpectrumWaterfall::timerCallback()
 {
-    for (int i = 0; i < displayBins; ++i)
-        spectrumHistory[writeIdx][i] = analyzer.getSmoothedMag(i);
+    if (getWidth() <= 0 || getHeight() <= 0) return;
 
-    writeIdx = (writeIdx + 1) % historyFrames;
-    if (validFrames < historyFrames)
-        ++validFrames;
+    ensureImageSize(getWidth(), getHeight());
 
-    repaint();
+    const int imgW = waterfallImage.getWidth();
+    const int imgH = waterfallImage.getHeight();
+
+    juce::Graphics ig(waterfallImage);
+
+    // ---- 1. 整幅图向上移动 1 像素 ----
+    ig.drawImage(waterfallImage,
+        0, -1, imgW, imgH,           // 目标：向上偏移 1px
+        0, 0, imgW, imgH,           // 源：整图
+        false);
+
+    // 修复移走后顶部露出的 1px 空白
+    ig.setColour(juce::Colour(0xff070710));
+    ig.fillRect(0, 0, imgW, 1);
+
+    // ---- 2. 在底部绘制新频谱行 ----
+    const float sr = (currentSampleRate) ? *currentSampleRate : 44100.0f;
+    if (std::abs(static_cast<float>(imgW) - lastWidth) > 0.5f ||
+        std::abs(sr - lastSampleRate) > 1.0f)
+        rebuildXCoords(static_cast<float>(imgW), sr);
+
+    for (int i = 0; i < displayBins - 1; ++i)
+    {
+        const float mag = analyzer.getSmoothedMag(i);
+
+        juce::Colour col;
+        if (mag < 0.08f)
+            col = juce::Colour(0xff040410);
+        else if (mag < 0.25f)
+            col = juce::Colour::fromHSV(0.60f, 0.90f, mag * 1.5f, 1.0f);
+        else if (mag < 0.55f)
+            col = juce::Colour::fromHSV(0.40f, 0.75f, mag * 1.3f, 1.0f);
+        else if (mag < 0.80f)
+            col = juce::Colour::fromHSV(0.22f, 0.60f, mag * 1.1f, 1.0f);
+        else
+            col = juce::Colour::fromHSV(0.13f, 0.95f, 1.0f, 1.0f);
+
+        ig.setColour(col);
+
+        const float x1 = logXCoords[static_cast<size_t>(i)];
+        const float x2 = logXCoords[static_cast<size_t>(i + 1)];
+        const float bw = juce::jmax(1.0f, x2 - x1);
+        ig.fillRect(x1, static_cast<float>(imgH) - 1.0f, bw, 1.0f);
+    }
+
+    repaint();  // 触发 paint() 只做 blit
 }
 
-// ===== 绘制 =====
+// ===== 绘制：只 blit Image + 画频率标尺 =====
 void SpectrumWaterfall::paint(juce::Graphics& g)
 {
-    // FIX: bounds 改为非 const，因为 removeFromTop 是 non-const 成员函数
-    juce::Rectangle<float> bounds = getLocalBounds().toFloat();
+    const auto bounds = getLocalBounds().toFloat();
     const float w = bounds.getWidth();
     const float h = bounds.getHeight();
 
-    // 背景
+    // ---- 背景 ----
     g.fillAll(juce::Colour(0xff070710));
 
-    // ---- 需要时重建 X 坐标 ----
-    const float sr = (currentSampleRate) ? *currentSampleRate : 44100.0f;
-    if (std::abs(w - lastWidth) > 0.5f || std::abs(sr - lastSampleRate) > 1.0f)
-        rebuildXCoords(w, sr);
-
-    if (validFrames == 0)
-        return;
-
-    const float rowHeight = h / static_cast<float>(historyFrames);
-
-    // ---- 逐帧绘制（顶部 = 最旧，底部 = 最新） ----
-    for (int f = 0; f < validFrames; ++f)
-    {
-        const int   idx = (writeIdx - validFrames + f + historyFrames) % historyFrames;
-        const float y = static_cast<float>(f) * rowHeight;
-
-        for (int i = 0; i < displayBins - 1; ++i)
-        {
-            const float mag = spectrumHistory[idx][i];
-
-            juce::Colour col;
-            if (mag < 0.08f)
-                col = juce::Colour(0xff040410);
-            else if (mag < 0.25f)
-                col = juce::Colour::fromHSV(0.60f, 0.90f, mag * 1.5f, 1.0f);
-            else if (mag < 0.55f)
-                col = juce::Colour::fromHSV(0.40f, 0.75f, mag * 1.3f, 1.0f);
-            else if (mag < 0.80f)
-                col = juce::Colour::fromHSV(0.22f, 0.60f, mag * 1.1f, 1.0f);
-            else
-                col = juce::Colour::fromHSV(0.13f, 0.95f, 1.0f, 1.0f);
-
-            g.setColour(col);
-
-            const float x1 = logXCoords[static_cast<size_t>(i)];
-            const float x2 = logXCoords[static_cast<size_t>(i + 1)];
-            const float bw = juce::jmax(1.0f, x2 - x1);
-            g.fillRect(x1, y, bw, rowHeight + 1.0f);
-        }
-    }
+    // ---- blit 帧缓冲 ----
+    if (waterfallImage.isValid())
+        g.drawImageAt(waterfallImage, 0, 0, false);
 
     // ---- 频率轴标注 ----
     g.setColour(juce::Colours::grey.withAlpha(0.5f));
@@ -128,10 +146,8 @@ void SpectrumWaterfall::paint(juce::Graphics& g)
     const float markers[] = { 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
     const char* labels[] = { "50","100","200","500","1k","2k","5k","10k","20k" };
 
-    // FIX: constexpr → static const
-    static const float mMin = 20.0f;
     static const float mA4 = 440.0f;
-    static const float cMin = 1200.0f * std::log2(mMin / mA4);
+    static const float cMin = 1200.0f * std::log2(20.0f / mA4);
     static const float cMax = 1200.0f * std::log2(20000.0f / mA4);
 
     for (int m = 0; m < 9; ++m)
@@ -148,7 +164,7 @@ void SpectrumWaterfall::paint(juce::Graphics& g)
     // 小标题
     g.setColour(juce::Colours::white.withAlpha(0.4f));
     g.setFont(juce::FontOptions(11.0f));
-    g.drawText("log-scaled  ·  cent-spaced  ·  60fps",
-        bounds.removeFromTop(14.0f).reduced(6.0f, 0.0f),
+    g.drawText("log-scaled  ·  cent-spaced  ·  30fps image-buffer",
+        juce::Rectangle<float>(6.0f, 2.0f, w - 12.0f, 14.0f),
         juce::Justification::centredLeft);
 }

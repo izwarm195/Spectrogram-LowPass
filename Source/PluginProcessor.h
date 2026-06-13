@@ -32,24 +32,12 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
-    // 公开接口
     SpectrumAnalyzer& getAnalyzer() { return analyzer; }
-    float             getSampleRate() const { return static_cast<float>(currentSampleRate); }
+    float             getSampleRate() const { return currentSampleRate; }
     float* getSampleRatePtr() { return &currentSampleRate; }
 
-    juce::AudioProcessorValueTreeState& getState() { return parameters; }
-
 private:
-    juce::AudioProcessorValueTreeState parameters;
-    std::atomic<float>* cutoffParam = nullptr;
-
-    // 滤波器
-    using Filter = juce::dsp::IIR::Filter<float>;
-    juce::dsp::ProcessorDuplicator<Filter, juce::dsp::IIR::Coefficients<float>> lowPassFilter;
-
-    // 频谱分析器（独立的引擎）
     SpectrumAnalyzer analyzer;
-
     float currentSampleRate = 44100.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpectrogramAndLowPassAudioProcessor)
