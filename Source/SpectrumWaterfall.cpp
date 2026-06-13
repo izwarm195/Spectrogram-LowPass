@@ -1,3 +1,5 @@
+// SpectrumWaterfall.cpp — 完整重写
+
 #include "SpectrumWaterfall.h"
 #include "SpectrumAnalyzer.h"
 
@@ -73,15 +75,7 @@ void SpectrumWaterfall::timerCallback()
 
     juce::Graphics ig(waterfallImage);
 
-    // 1. scroll image up by 1 pixel
-    ig.drawImage(waterfallImage, 0, -1, imgW, imgH,
-        0, 0, imgW, imgH, false);
-
-    // fill the exposed top row
-    ig.setColour(juce::Colour(0xff070710));
-    ig.fillRect(0, 0, imgW, 1);
-
-    // 2. draw new spectrum row at bottom
+    // ---- 1. 在当前行绘制新频谱 ----
     const float sr = (currentSampleRate) ? *currentSampleRate : 44100.0f;
     if (std::abs(static_cast<float>(imgW) - lastWidth) > 0.5f
         || std::abs(sr - lastSampleRate) > 1.0f)
@@ -110,8 +104,13 @@ void SpectrumWaterfall::timerCallback()
         const float x1 = logXCoords[static_cast<size_t>(i)];
         const float x2 = logXCoords[static_cast<size_t>(i + 1)];
         const float bw = juce::jmax(1.0f, x2 - x1);
-        ig.fillRect(x1, static_cast<float>(imgH) - 1.0f, bw, 1.0f);
+        ig.fillRect(x1, static_cast<float>(currentRow), bw, 1.0f);
     }
+
+    // ---- 2. 推进 currentRow（环形），下一行填入背景色 ----
+    currentRow = (currentRow + 1) % imgH;
+    ig.setColour(juce::Colour(0xff070710));
+    ig.fillRect(0.0f, static_cast<float>(currentRow), static_cast<float>(imgW), 1.0f);
 
     repaint();
 }
@@ -125,9 +124,30 @@ void SpectrumWaterfall::paint(juce::Graphics& g)
     g.fillAll(juce::Colour(0xff070710));
 
     if (waterfallImage.isValid())
-        g.drawImageAt(waterfallImage, 0, 0, false);
+    {
+        const int imgW = waterfallImage.getWidth();
+        const int imgH = waterfallImage.getHeight();
 
-    // frequency markers
+        // ---- 环形分段 blit：currentRow 是最新行，向下（环形）是最旧 ----
+        // 上半段：currentRow+1 到 底部（较旧数据）
+        const int split = (currentRow + 1) % imgH;
+        const int topH = imgH - split;  // 从 split 到底部的高度
+        const int botH = split;          // 从 0 到 split 的高度（较新数据）
+
+        // 先画较旧部分（image 中 split..imgH-1 的行 → 屏幕顶部 0..topH-1）
+        if (topH > 0)
+            g.drawImage(waterfallImage,
+                0, 0, imgW, topH,
+                0, split, imgW, topH, false);
+
+        // 再画较新部分（image 中 0..split-1 的行 → 屏幕底部）
+        if (botH > 0)
+            g.drawImage(waterfallImage,
+                0, static_cast<float>(topH), imgW, botH,
+                0, 0, imgW, botH, false);
+    }
+
+    // ---- 频率标注 ----
     g.setColour(juce::Colours::grey.withAlpha(0.5f));
     g.setFont(juce::FontOptions(10.0f));
 
@@ -151,7 +171,7 @@ void SpectrumWaterfall::paint(juce::Graphics& g)
 
     g.setColour(juce::Colours::white.withAlpha(0.4f));
     g.setFont(juce::FontOptions(11.0f));
-    g.drawText("log-scaled  cent-spaced  60fps image-buffer",
+    g.drawText("log-scaled  cent-spaced  60fps ring-buffer",
         juce::Rectangle<float>(6.0f, 2.0f, w - 12.0f, 14.0f),
         juce::Justification::centredLeft);
 }
