@@ -41,7 +41,7 @@ void SpectrumAnalyzer::process(const float* audioData, int numSamples)
     }
 
     const float oldMax = maxMag.load(std::memory_order_relaxed);
-    const float trackAlpha = 0.05f;
+    const float trackAlpha = 0.15f;
     maxMag.store(oldMax * (1.0f - trackAlpha) + localMax * trackAlpha, std::memory_order_relaxed);
 
     computeSmoothedDisplayFrame();

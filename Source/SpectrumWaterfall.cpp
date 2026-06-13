@@ -16,7 +16,7 @@ SpectrumWaterfall::~SpectrumWaterfall()
 
 void SpectrumWaterfall::startAnimation()
 {
-    startTimerHz(120);
+    startTimerHz(60);
 }
 
 void SpectrumWaterfall::stopAnimation()
@@ -93,7 +93,7 @@ void SpectrumWaterfall::timerCallback()
         juce::Colour col;
 
         if (mag < 0.01f)
-            col = juce::Colour(0xff0a0a20);
+            col = juce::Colour(0xff101030);
         else if (mag < 0.05f)
             col = juce::Colour::fromHSV(0.62f, 0.95f, mag * 6.0f, 1.0f);
         else if (mag < 0.15f)
@@ -151,7 +151,7 @@ void SpectrumWaterfall::paint(juce::Graphics& g)
 
     g.setColour(juce::Colours::white.withAlpha(0.4f));
     g.setFont(juce::FontOptions(11.0f));
-    g.drawText("log-scaled  cent-spaced  120fps image-buffer",
+    g.drawText("log-scaled  cent-spaced  60fps image-buffer",
         juce::Rectangle<float>(6.0f, 2.0f, w - 12.0f, 14.0f),
         juce::Justification::centredLeft);
 }
