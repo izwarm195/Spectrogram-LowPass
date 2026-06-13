@@ -1,5 +1,4 @@
 #pragma once
-
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "SpectrumWaterfall.h"
@@ -8,7 +7,8 @@ class SpectrogramAndLowPassAudioProcessorEditor
     : public juce::AudioProcessorEditor
 {
 public:
-    explicit SpectrogramAndLowPassAudioProcessorEditor(SpectrogramAndLowPassAudioProcessor&);
+    explicit SpectrogramAndLowPassAudioProcessorEditor(
+        SpectrogramAndLowPassAudioProcessor&);
     ~SpectrogramAndLowPassAudioProcessorEditor() override;
 
     void paint(juce::Graphics&) override;
@@ -18,5 +18,6 @@ private:
     SpectrogramAndLowPassAudioProcessor& audioProcessor;
     SpectrumWaterfall waterfall;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpectrogramAndLowPassAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
+        SpectrogramAndLowPassAudioProcessorEditor)
 };

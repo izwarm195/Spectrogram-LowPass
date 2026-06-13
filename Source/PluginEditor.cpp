@@ -1,23 +1,20 @@
 ﻿#include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-SpectrogramAndLowPassAudioProcessorEditor::SpectrogramAndLowPassAudioProcessorEditor(
+SpectrogramAndLowPassAudioProcessorEditor::
+SpectrogramAndLowPassAudioProcessorEditor(
     SpectrogramAndLowPassAudioProcessor& p)
     : AudioProcessorEditor(&p)
     , audioProcessor(p)
     , waterfall(p.getAnalyzer(), p.getSampleRatePtr())
 {
     addAndMakeVisible(waterfall);
-    // waterfall.startAnimation();  ← 删掉，timer 已在构造函数启动
     setResizable(true, true);
     setSize(800, 400);
 }
 
-
-SpectrogramAndLowPassAudioProcessorEditor::~SpectrogramAndLowPassAudioProcessorEditor()
-{
-    waterfall.stopAnimation();
-}
+SpectrogramAndLowPassAudioProcessorEditor::
+~SpectrogramAndLowPassAudioProcessorEditor() = default;
 
 void SpectrogramAndLowPassAudioProcessorEditor::paint(juce::Graphics& g)
 {

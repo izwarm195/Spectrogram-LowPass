@@ -1,12 +1,12 @@
 #pragma once
-
 #include <JuceHeader.h>
 
 class SpectrumAnalyzer;
 
 // ============================================================
-// 频谱瀑布图 —— Image 帧缓冲实现，零卡顿
-// 每帧：Image 上移 1px → 底部画新频谱行 → paint 只 blit
+// 频谱瀑布图组件
+// 内部维护一张环形 Image 缓冲区，timer 逐行写入频谱颜色，
+// paint() 只做 blit，保证 30fps 下流畅运行
 // ============================================================
 class SpectrumWaterfall : public juce::Component,
     public juce::Timer
@@ -19,21 +19,18 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
 
-    void startAnimation();
-    void stopAnimation();
-
 private:
     SpectrumAnalyzer& analyzer;
     float* currentSampleRate;
 
     static constexpr int displayBins = 512;
-    static constexpr int historyHeight = 360;      // 6 秒 @60fps，或 12 秒 @30fps
+    static constexpr int defaultHeight = 360;
 
-    // 帧缓冲
+    // ---- 瀑布 Image ----
     juce::Image waterfallImage;
-    int        currentRow = 0;   // 当前写入行（0 = 底部，向上增长）
+    int        currentRow = 0;   // 下一帧写入的目标行（环形）
 
-    // 对数 X 坐标（只 resize 时重建）
+    // ---- 对数刻度 X 坐标缓存 ----
     std::array<float, displayBins> logXCoords{};
     float lastWidth = 0.0f;
     float lastSampleRate = 0.0f;
