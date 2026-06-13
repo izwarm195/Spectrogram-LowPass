@@ -1,5 +1,3 @@
-// SpectrumWaterfall.cpp — 完整重写
-
 #include "SpectrumWaterfall.h"
 #include "SpectrumAnalyzer.h"
 
@@ -128,50 +126,36 @@ void SpectrumWaterfall::paint(juce::Graphics& g)
         const int imgW = waterfallImage.getWidth();
         const int imgH = waterfallImage.getHeight();
 
-        // ---- 环形分段 blit：currentRow 是最新行，向下（环形）是最旧 ----
-        // 上半段：currentRow+1 到 底部（较旧数据）
         const int split = (currentRow + 1) % imgH;
-        const int topH = imgH - split;  // 从 split 到底部的高度
-        const int botH = split;          // 从 0 到 split 的高度（较新数据）
+        const int topH = imgH - split;
+        const int botH = split;
 
-        // 先画较旧部分（image 中 split..imgH-1 的行 → 屏幕顶部 0..topH-1）
         if (topH > 0)
             g.drawImage(waterfallImage,
                 0, 0, imgW, topH,
                 0, split, imgW, topH, false);
 
-        // 再画较新部分（image 中 0..split-1 的行 → 屏幕底部）
         if (botH > 0)
             g.drawImage(waterfallImage,
                 0, static_cast<float>(topH), imgW, botH,
                 0, 0, imgW, botH, false);
     }
 
-    // ---- 频率标注 ----
-    g.setColour(juce::Colours::grey.withAlpha(0.5f));
-    g.setFont(juce::FontOptions(10.0f));
+    // ---- cent 频段竖线网格（无文字） ----
+    g.setColour(juce::Colours::grey.withAlpha(0.15f));
 
-    const float markers[] = { 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
-    const char* labels[] = { "50","100","200","500","1k","2k","5k","10k","20k" };
+    static const float minFreq = 20.0f;
+    static const float maxFreq = 20000.0f;
+    static const float A4 = 440.0f;
+    static const float centMin = 1200.0f * std::log2(minFreq / A4);
+    static const float centMax = 1200.0f * std::log2(maxFreq / A4);
+    static const float centSpan = centMax - centMin;
 
-    static const float mA4 = 440.0f;
-    static const float cMin = 1200.0f * std::log2(20.0f / mA4);
-    static const float cMax = 1200.0f * std::log2(20000.0f / mA4);
-
-    for (int m = 0; m < 9; ++m)
+    // 每 1 cent 一条线，约 12000 条，渲染开销可控
+    for (int c = static_cast<int>(std::ceil(centMin)); c <= static_cast<int>(centMax); ++c)
     {
-        const float c = 1200.0f * std::log2(markers[m] / mA4);
-        const float nx = (c - cMin) / (cMax - cMin);
+        const float nx = (static_cast<float>(c) - centMin) / centSpan;
         const float x = nx * w;
-        g.drawLine(x, h - 16.0f, x, h - 8.0f);
-        g.drawText(juce::String(labels[m]) + "Hz",
-            x - 24.0f, h - 20.0f, 48.0f, 13.0f,
-            juce::Justification::centred);
+        g.drawVerticalLine(static_cast<int>(x), 0.0f, h);
     }
-
-    g.setColour(juce::Colours::white.withAlpha(0.4f));
-    g.setFont(juce::FontOptions(11.0f));
-    g.drawText("log-scaled  cent-spaced  60fps ring-buffer",
-        juce::Rectangle<float>(6.0f, 2.0f, w - 12.0f, 14.0f),
-        juce::Justification::centredLeft);
 }

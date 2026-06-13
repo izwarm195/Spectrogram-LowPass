@@ -16,8 +16,7 @@ public:
 
 private:
     SpectrogramAndLowPassAudioProcessor& audioProcessor;
-    SpectrumWaterfall                   waterfall;
-    juce::Label                         titleLabel;
+    SpectrumWaterfall waterfall;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpectrogramAndLowPassAudioProcessorEditor)
 };
